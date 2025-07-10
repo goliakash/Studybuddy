@@ -1,39 +1,87 @@
 import streamlit as st
 from transformers import pipeline
+import random
 
-# Set up the HuggingFace pipeline (lightweight model for free use)
-study_assistant = pipeline("text-generation", model="tiiuae/falcon-7b-instruct", max_new_tokens=256)
+# Load lightweight model from HuggingFace
+@st.cache_resource
+def load_model():
+    return pipeline("text2text-generation", model="google/flan-t5-base")
 
-# UI Setup
-st.set_page_config(page_title="StudyBuddy - Free AI Study Assistant", layout="centered")
-st.markdown("<h1 style='text-align: center;'>📘 StudyBuddy - Your Free AI Study Partner</h1>", unsafe_allow_html=True)
-st.markdown("### 👋 Hi Student! Ask me anything about your studies below.")
+study_assistant = load_model()
+
+# App UI
+st.set_page_config(page_title="StudyBuddy - AI Study Assistant", layout="centered")
+st.markdown("<h1 style='text-align: center;'>📘 StudyBuddy - Your AI Study Partner</h1>", unsafe_allow_html=True)
+
+# Mode selector
+mode = st.radio("Choose Mode", ["📖 Ask a Question", "🎯 Take a Quiz"])
+
+# Subject selector
+subject = st.selectbox("Select Subject", ["General", "Math", "Science", "History", "Geography", "Computer Science"])
 
 # Chat history
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-# Display past messages
-for msg in st.session_state["messages"]:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+# Quiz database
+quiz_bank = {
+    "Math": [
+        {"question": "What is 5 + 7?", "answer": "12"},
+        {"question": "What is the square root of 81?", "answer": "9"},
+    ],
+    "Science": [
+        {"question": "What planet is known as the Red Planet?", "answer": "Mars"},
+        {"question": "What gas do plants absorb?", "answer": "Carbon dioxide"},
+    ],
+    "History": [
+        {"question": "Who was the first President of the USA?", "answer": "George Washington"},
+        {"question": "Which country started World War II?", "answer": "Germany"},
+    ],
+    "Geography": [
+        {"question": "What is the capital of France?", "answer": "Paris"},
+        {"question": "Which ocean is the largest?", "answer": "Pacific"},
+    ],
+    "Computer Science": [
+        {"question": "What does CPU stand for?", "answer": "Central Processing Unit"},
+        {"question": "What is the binary number for 5?", "answer": "101"},
+    ]
+}
 
-# Input box
-user_input = st.chat_input("Type your study question here...")
+# Ask Mode
+if mode == "📖 Ask a Question":
+    for msg in st.session_state["messages"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-if user_input:
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
+    user_input = st.chat_input("Ask a question related to your subject...")
 
-    with st.chat_message("assistant"):
-        with st.spinner("🧠 Thinking..."):
-            try:
-                response = study_assistant(f"Student: {user_input}
-Assistant:", do_sample=True)[0]["generated_text"]
-                assistant_reply = response.split("Assistant:")[-1].strip()
-            except Exception as e:
-                assistant_reply = f"❌ Error: {e}"
+    if user_input:
+        st.session_state["messages"].append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-        st.markdown(assistant_reply)
-        st.session_state["messages"].append({"role": "assistant", "content": assistant_reply})
+        with st.chat_message("assistant"):
+            with st.spinner("🧠 Thinking..."):
+                try:
+                    prompt = f"As a {subject} tutor, explain this simply: {user_input}"
+                    response = study_assistant(prompt, max_new_tokens=200)[0]["generated_text"]
+                    reply = response.strip()
+                except Exception as e:
+                    reply = f"❌ Error: {e}"
+
+            st.markdown(reply)
+            st.session_state["messages"].append({"role": "assistant", "content": reply})
+
+# Quiz Mode
+else:
+    st.markdown(f"### 🎯 Quiz Time - Subject: {subject}")
+    if subject in quiz_bank:
+        question = random.choice(quiz_bank[subject])
+        user_answer = st.text_input(f"📝 {question['question']}")
+        if user_answer:
+            if user_answer.strip().lower() == question['answer'].lower():
+                st.success("✅ Correct!")
+            else:
+                st.error(f"❌ Incorrect. The correct answer is: {question['answer']}")
+    else:
+        st.info("No quiz questions available for this subject yet.")
