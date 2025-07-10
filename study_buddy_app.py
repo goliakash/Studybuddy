@@ -31,7 +31,7 @@ if user_input:
         st.markdown("🧠 Thinking...")
         try:
             response = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a friendly and knowledgeable study assistant for school and college students. Answer simply and clearly."},
                     *st.session_state["messages"]
