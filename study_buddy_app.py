@@ -1,11 +1,11 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import os
 
-# Use environment variable for OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize OpenAI client with API key from environment variable
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# App UI
+# App configuration
 st.set_page_config(page_title="StudyBuddy - AI Study Assistant", layout="centered")
 st.markdown("<h1 style='text-align: center;'>📘 StudyBuddy - Your AI Study Partner</h1>", unsafe_allow_html=True)
 st.markdown("### 👋 Hi Student! Ask me anything about your studies below.")
@@ -14,12 +14,12 @@ st.markdown("### 👋 Hi Student! Ask me anything about your studies below.")
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-# Display message history
+# Display chat history
 for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# User input
+# Get user input
 user_input = st.chat_input("Type your study question here...")
 
 if user_input:
@@ -30,7 +30,7 @@ if user_input:
     with st.chat_message("assistant"):
         st.markdown("🧠 Thinking...")
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a friendly and knowledgeable study assistant for school and college students. Answer simply and clearly."},
@@ -39,7 +39,7 @@ if user_input:
                 temperature=0.7,
                 max_tokens=400
             )
-            assistant_reply = response["choices"][0]["message"]["content"]
+            assistant_reply = response.choices[0].message.content
         except Exception as e:
             assistant_reply = f"❌ Error: {e}"
 
